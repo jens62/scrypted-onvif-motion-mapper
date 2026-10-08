@@ -73,12 +73,49 @@ The topics can be told apart in the log: with *Log All Events* on, a matched eve
 Not verified on a camera yet; the state logic is covered by a test with timers (`src/combined-motion.ts`).
 
 ## Build and install
+The plugin is not published on npm or in Scrypted's plugin list. You build it from this repository and
+deploy it to your Scrypted server from the command line. You need Node.js and a Scrypted server that
+you can reach from this machine.
+
+### 1. Get the code and build
 ```sh
+git clone https://github.com/jens62/scrypted-onvif-motion-mapper.git
+cd scrypted-onvif-motion-mapper
 npm install
-npm run build          # out/plugin.zip
+npm run build          # writes out/plugin.zip
 ```
-`out/` is not in the repository. Deploy with the `scrypted-deploy` script of the Scrypted SDK (see
-Scrypted's plugin documentation for the exact call), or install `plugin.zip` by hand.
+`out/` is not in the repository.
+
+### 2. Log in to your Scrypted server (once)
+```sh
+npx scrypted login <scrypted-host>:10443
+```
+Use the address and port of the Scrypted web interface (`10443` is the default HTTPS port) and the
+username and password of a Scrypted account. The login is stored on this machine, and the command prints
+a token: do not share it or put it into a document or a chat.
+
+### 3. Deploy
+```sh
+npx scrypted-deploy <scrypted-host>:10443
+```
+The output ends with `deployed to <scrypted-host>:10443`. To update the plugin, build again
+(`npm run build`) and run the same command again.
+
+Scrypted's default certificate is self-signed, so the command can fail with a certificate error. On a
+network you trust you can switch the certificate check off **for this one command**:
+```sh
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx scrypted-deploy <scrypted-host>:10443
+```
+Node then prints a warning that TLS verification is disabled. Do not `export` the variable for the whole
+shell session, and do not use it across an untrusted network.
+
+### 4. Create a device
+In the Scrypted web interface open **Plugins**, select **ONVIF Motion Mapper**, and add a device
+(enter a name; the settings are described above). Then attach the device to the camera with the Dummy
+Switch plugin's **Custom Motion Sensor** extension.
+
+The Scrypted SDK offers more ways to deploy (for example a debug launch from VS Code); see Scrypted's
+plugin documentation. `out/plugin.zip` can also be used by hand if you prefer.
 
 ## Test
 `isolated_logic_test.js` checks the order in which the plugin attaches its event listener to the

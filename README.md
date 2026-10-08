@@ -60,4 +60,4 @@ connection (the listener has to be attached after the camera connected, otherwis
 subscription is lost): `node isolated_logic_test.js`.
 
 ## Licence
-No licence chosen yet.
+MIT, see `LICENSE`.

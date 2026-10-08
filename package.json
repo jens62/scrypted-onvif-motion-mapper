@@ -1,0 +1,44 @@
+{
+  "name": "@local/onvif-motion-mapper",
+  "version": "0.0.4",
+  "description": "Scrypted plugin: maps an arbitrary ONVIF PullPoint event (topic + item name) that the built-in ONVIF plugin does not recognize onto a MotionSensor device. Attach that device to a real camera with the Dummy Switch plugin's 'Custom Motion Sensor' extension.",
+  "scripts": {
+    "scrypted-setup-project": "scrypted-setup-project",
+    "prescrypted-setup-project": "scrypted-package-json",
+    "build": "scrypted-webpack",
+    "prepublishOnly": "NODE_ENV=production scrypted-webpack",
+    "prescrypted-vscode-launch": "scrypted-webpack",
+    "scrypted-vscode-launch": "scrypted-deploy-debug",
+    "scrypted-deploy-debug": "scrypted-deploy-debug",
+    "scrypted-debug": "scrypted-debug",
+    "scrypted-deploy": "scrypted-deploy",
+    "scrypted-readme": "scrypted-readme",
+    "scrypted-package-json": "scrypted-package-json"
+  },
+  "keywords": [
+    "scrypted",
+    "plugin",
+    "onvif",
+    "motion"
+  ],
+  "scrypted": {
+    "rollup": true,
+    "name": "ONVIF Motion Mapper",
+    "type": "DeviceProvider",
+    "interfaces": [
+      "ScryptedSystemDevice",
+      "ScryptedDeviceCreator",
+      "DeviceProvider",
+      "DeviceCreator"
+    ]
+  },
+  "dependencies": {
+    "@scrypted/sdk": "^0.5.29",
+    "onvif": "^0.7.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.10",
+    "terser-webpack-plugin": "^5.6.1",
+    "webpack-cli": "^7.2.3"
+  }
+}

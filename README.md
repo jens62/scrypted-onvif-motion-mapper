@@ -25,7 +25,7 @@ Settings of a device:
 | Combine Matched Topics (any active) | for a `/regex/` topic that matches several events: every topic keeps its own on/off state and motion stays on while any of them is on (see below). Off by default |
 | Invert Value | for cameras that report a truthy value while there is no motion |
 | Motion Reset (seconds) | clears motion after this long if no new "true" arrives; `0` clears only on an explicit "false". With *Combine* it counts for each topic on its own |
-| Log All Events | logs every event the device receives (topic, item, value): use it to find the right topic and item name, then turn it off |
+| Log All Events | logs every event the device receives (topic, item, value): use it to find the right topic and item name, then turn it off. Items named `svgframe` (Axis Object Analytics overlay pictures, several per second) are left out. Switch it on shortly before your test and off right after it, otherwise the console buffer drops the early lines |
 
 Each device has its own PullPoint subscription. Cameras have a limit for these; on a camera that
 already answers with HTTP 503, several devices make it worse.
@@ -54,7 +54,7 @@ one device has to carry both events:
 
 | Setting | Value |
 |---|---|
-| Event Topic | `/(MotionRegionDetector\/Motion\|AnimalDetector\/Any)$/` (a regex matching both topics; adapt the first part to what your camera sends, see *Log All Events*) |
+| Event Topic | `/^(RuleEngine\/MotionRegionDetector\/Motion\|CameraApplicationPlatform\/AnimalDetector\/Any)$/` (full topic paths, anchored: matches exactly these two events; adapt the first part to what your camera sends, see *Log All Events*) |
 | Data Item Name | empty (the camera's motion uses another item name, e.g. `State`, than the animal event, `active`; an empty name matches on the topic alone) |
 | Combine Matched Topics (any active) | on |
 | Motion Reset (seconds) | `0` if both events send an explicit "false" |
@@ -70,7 +70,11 @@ How it behaves with *Combine* on:
 The topics can be told apart in the log: with *Log All Events* on, a matched event is logged as
 `-> matched <topic> ON/OFF, active topics: [...]`.
 
-Not verified on a camera yet; the state logic is covered by a test with timers (`src/combined-motion.ts`).
+The topics above were seen in the log of an Axis camera (`RuleEngine/MotionRegionDetector/Motion` with the
+item `State`; the camera sends several motion topics for one motion, among them `VideoSource/MotionAlarm`
+and `CameraApplicationPlatform/VMD/Camera1ProfileANY`, which could be used instead). Check the topics of your
+camera with *Log All Events*. Not verified end to end on a camera yet; the state logic is covered by a test
+with timers (`src/combined-motion.ts`).
 
 ## Build and install
 The plugin is not published on npm or in Scrypted's plugin list. You build it from this repository and

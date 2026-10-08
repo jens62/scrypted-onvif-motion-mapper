@@ -1,6 +1,6 @@
 {
   "name": "@local/onvif-motion-mapper",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Scrypted plugin: maps an arbitrary ONVIF PullPoint event (topic + item name) that the built-in ONVIF plugin does not recognize onto a MotionSensor device. Attach that device to a real camera with the Dummy Switch plugin's 'Custom Motion Sensor' extension.",
   "license": "MIT",
   "scripts": {

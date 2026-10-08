@@ -80,6 +80,7 @@ class OnvifMotionMapperDevice extends ScryptedDeviceBase implements MotionSensor
     watchdogInterval: NodeJS.Timeout;
     lastEventAt = 0;
     destroyed = false;
+    svgNoticeLogged = false;
     topicTest: (topic: string) => boolean = () => false;
     // only used with the "Combine Matched Topics" setting: one on/off state per matched topic
     combined = new CombinedMotion(motion => this.motionDetected = motion);
@@ -124,7 +125,7 @@ class OnvifMotionMapperDevice extends ScryptedDeviceBase implements MotionSensor
         combine: {
             title: 'Combine Matched Topics (any active)',
             description: 'For a /regex/ Event Topic that matches several events, e.g. '
-                + '/(MotionRegionDetector\\/Motion|AnimalDetector\\/Any)$/ (the camera\'s own motion plus an animal detector). '
+                + '/^(RuleEngine\\/MotionRegionDetector\\/Motion|CameraApplicationPlatform\\/AnimalDetector\\/Any)$/ (the camera\'s own motion plus an animal detector). '
                 + 'Every matched topic keeps its own on/off state, and motion is reported as long as at least one of them is on. '
                 + 'A false value only switches off its own topic. Motion Reset then counts for each topic on its own. '
                 + 'Off (default): one shared flag, the last matched event wins. Leave Data Item Name empty if the topics '
@@ -156,7 +157,8 @@ class OnvifMotionMapperDevice extends ScryptedDeviceBase implements MotionSensor
         debugLog: {
             title: 'Log All Events',
             description: 'Log every ONVIF event this device receives (topic, item name, value) to the console, '
-                + 'matching or not. Very noisy - use it only to find the right Topic/Item Name, then turn it off.',
+                + 'matching or not (SVG overlay pictures, item "svgframe", are left out). Noisy - use it only to find the '
+                + 'right Topic/Item Name, switch it on shortly before the test and off right after it, then copy the console from the top.',
             type: 'boolean',
             defaultValue: false,
         },
@@ -223,7 +225,15 @@ class OnvifMotionMapperDevice extends ScryptedDeviceBase implements MotionSensor
         const dataValue = item.Value;
         const eventTopic = stripNamespaces(event.topic._);
 
-        if (debug)
+        // Axis Object Analytics sends an SVG picture of its overlay several times a second
+        // (topic CameraApplicationPlatform/ObjectAnalytics/xinternal_data, item "svgframe"). Logged, it
+        // fills the console and pushes the interesting events out of its buffer. It is still matched below.
+        const noisyItem = item.Name === 'svgframe';
+        if (debug && noisyItem && !this.svgNoticeLogged) {
+            this.svgNoticeLogged = true;
+            this.console.log('Log All Events: items named "svgframe" (SVG overlay pictures, very noisy) are not logged.');
+        }
+        if (debug && !noisyItem)
             this.console.log(`onvif event: topic="${eventTopic}" item="${item.Name}" value=${JSON.stringify(dataValue)} (${typeof dataValue})`);
 
         if (!this.topicTest(eventTopic))

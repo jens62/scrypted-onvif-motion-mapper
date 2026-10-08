@@ -21,6 +21,7 @@ import sdk, {
 } from '@scrypted/sdk';
 import { StorageSettings } from '@scrypted/sdk/storage-settings';
 import onvifLib from 'onvif';
+import { CombinedMotion } from './combined-motion';
 
 const { Cam } = onvifLib as any;
 const { deviceManager } = sdk;
@@ -80,6 +81,8 @@ class OnvifMotionMapperDevice extends ScryptedDeviceBase implements MotionSensor
     lastEventAt = 0;
     destroyed = false;
     topicTest: (topic: string) => boolean = () => false;
+    // only used with the "Combine Matched Topics" setting: one on/off state per matched topic
+    combined = new CombinedMotion(motion => this.motionDetected = motion);
 
     storageSettings = new StorageSettings(this, {
         host: {
@@ -117,6 +120,18 @@ class OnvifMotionMapperDevice extends ScryptedDeviceBase implements MotionSensor
                 + 'to see the exact topics this camera actually sends.',
             type: 'string',
             onPut: () => this.rebuildTopicTest(),
+        },
+        combine: {
+            title: 'Combine Matched Topics (any active)',
+            description: 'For a /regex/ Event Topic that matches several events, e.g. '
+                + '/(MotionRegionDetector\\/Motion|AnimalDetector\\/Any)$/ (the camera\'s own motion plus an animal detector). '
+                + 'Every matched topic keeps its own on/off state, and motion is reported as long as at least one of them is on. '
+                + 'A false value only switches off its own topic. Motion Reset then counts for each topic on its own. '
+                + 'Off (default): one shared flag, the last matched event wins. Leave Data Item Name empty if the topics '
+                + 'use different item names.',
+            type: 'boolean',
+            defaultValue: false,
+            onPut: () => this.resetMotionState(),
         },
         itemName: {
             title: 'Data Item Name',
@@ -165,6 +180,13 @@ class OnvifMotionMapperDevice extends ScryptedDeviceBase implements MotionSensor
 
     rebuildTopicTest() {
         this.topicTest = parseTopicPattern(this.storageSettings.values.topic as string);
+        this.resetMotionState();
+    }
+
+    // Start from "no motion" when the topic or the combine mode changes, so no stale state is left.
+    resetMotionState() {
+        this.combined.clear();
+        this.clearMotion();
     }
 
     scheduleReconnect() {
@@ -213,6 +235,15 @@ class OnvifMotionMapperDevice extends ScryptedDeviceBase implements MotionSensor
         let truthy = !!dataValue;
         if (this.storageSettings.values.invert)
             truthy = !truthy;
+
+        if (this.storageSettings.values.combine) {
+            const seconds = Number(this.storageSettings.values.motionTimeout) || 0;
+            this.combined.set(eventTopic, truthy, seconds * 1000);
+            if (debug)
+                this.console.log(`-> matched ${eventTopic} ${truthy ? 'ON' : 'OFF'}, active topics: `
+                    + `[${this.combined.topics.join(', ')}], motion ${this.combined.motion ? 'ON' : 'OFF'}`);
+            return;
+        }
 
         if (debug)
             this.console.log(`-> matched, motion ${truthy ? 'START' : 'STOP'}`);
@@ -291,6 +322,9 @@ class OnvifMotionMapperDevice extends ScryptedDeviceBase implements MotionSensor
     disconnect() {
         clearTimeout(this.reconnectTimeout);
         clearInterval(this.watchdogInterval);
+        // A "false" can be missed while disconnected; forget the combined states instead of keeping
+        // motion on forever. (Only touches motion if the combine mode had something active.)
+        this.combined.clear();
         if (this.cam) {
             this.cam.removeAllListeners('event');
             this.cam.removeAllListeners('eventsError');
@@ -309,6 +343,7 @@ class OnvifMotionMapperDevice extends ScryptedDeviceBase implements MotionSensor
     release() {
         this.destroyed = true;
         clearTimeout(this.motionTimeout);
+        this.combined.clear();
         clearTimeout(this.reconnectDebounce);
         this.disconnect();
     }

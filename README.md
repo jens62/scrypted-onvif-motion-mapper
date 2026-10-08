@@ -22,8 +22,9 @@ Settings of a device:
 | Host, Port, HTTPS, Username, Password | the camera's ONVIF address |
 | Event Topic | a substring of the topic after the namespaces are stripped, or a `/regex/` (with flags) |
 | Data Item Name | the name of the boolean item in the event's data (`motion`, `IsMotion`, `State`, `active` ...); empty matches on the topic alone |
+| Combine Matched Topics (any active) | for a `/regex/` topic that matches several events: every topic keeps its own on/off state and motion stays on while any of them is on (see below). Off by default |
 | Invert Value | for cameras that report a truthy value while there is no motion |
-| Motion Reset (seconds) | clears motion after this long if no new "true" arrives; `0` clears only on an explicit "false" |
+| Motion Reset (seconds) | clears motion after this long if no new "true" arrives; `0` clears only on an explicit "false". With *Combine* it counts for each topic on its own |
 | Log All Events | logs every event the device receives (topic, item, value): use it to find the right topic and item name, then turn it off |
 
 Each device has its own PullPoint subscription. Cameras have a limit for these; on a camera that
@@ -45,6 +46,31 @@ The [axis-animal-detector](https://github.com/jens62/axis-animal-detector) app r
 
 For single species use `AnimalDetector/Bird` or a regex such as `/AnimalDetector\/(Cat|Dog)$/`.
 This is motion only: Scrypted does not get the species or the score.
+
+## Several events on one sensor: normal motion and animals
+The Custom Motion Sensor extension **replaces** the camera's own motion sensor with the selected one, so
+a mapper device that only knows the animal event leaves the camera's normal motion out. To record on both,
+one device has to carry both events:
+
+| Setting | Value |
+|---|---|
+| Event Topic | `/(MotionRegionDetector\/Motion\|AnimalDetector\/Any)$/` (a regex matching both topics; adapt the first part to what your camera sends, see *Log All Events*) |
+| Data Item Name | empty (the camera's motion uses another item name, e.g. `State`, than the animal event, `active`; an empty name matches on the topic alone) |
+| Combine Matched Topics (any active) | on |
+| Motion Reset (seconds) | `0` if both events send an explicit "false" |
+
+How it behaves with *Combine* on:
+- Every matched topic has its own state; motion is on as long as at least one topic is on. A "false"
+  of one topic does not end motion while another topic is still on, whichever event came last.
+- *Motion Reset* counts for each topic on its own (from that topic's last "true").
+- Changing the topic or the combine setting, a reconnect to the camera and removing the device clear all
+  topic states, so a missed "false" cannot leave motion on forever.
+- With *Combine* off (the default) nothing changes: one shared flag, the last matched event wins.
+
+The topics can be told apart in the log: with *Log All Events* on, a matched event is logged as
+`-> matched <topic> ON/OFF, active topics: [...]`.
+
+Not verified on a camera yet; the state logic is covered by a test with timers (`src/combined-motion.ts`).
 
 ## Build and install
 ```sh

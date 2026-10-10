@@ -59,6 +59,10 @@ one device has to carry both events:
 | Combine Matched Topics (any active) | on |
 | Motion Reset (seconds) | `0` if both events send an explicit "false" |
 
+The settings page for this case (host and user name replaced by placeholders):
+
+![ONVIF Motion Mapper settings: Event Topic regex for the camera's motion and the animal event, Combine Matched Topics on, Data Item Name empty, Motion Reset 0](docs/images/mapper-settings-motion-plus-animals.jpg)
+
 How it behaves with *Combine* on:
 - Every matched topic has its own state; motion is on as long as at least one topic is on. A "false"
   of one topic does not end motion while another topic is still on, whichever event came last.
